@@ -11,6 +11,7 @@ class Field:
     def __init__(
             self,
             name: Optional[str] = None,
+            *,
             default: Optional[Any] = _NO_DEFAULT,
             provider: AbstractProvider = DEFAULT_PROVIDER,
             caster: AbstractCaster = DEFAULT_CASTER,
@@ -28,9 +29,9 @@ class Field:
         if self.name is None:
             raise VariableNotFoundError('No name')
 
-        self._value = self.get_provider_value()
-
-        if self._value is None:
+        try:
+            self._value = self.get_provider_value()
+        except VariableNotFoundError:
             return self._get_default_value()
 
         return self._get_casted_value()

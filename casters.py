@@ -3,7 +3,6 @@ import typing
 
 from .exceptions import ImpossibleToCastError
 
-
 VT = typing.TypeVar('VT')
 
 
@@ -11,6 +10,16 @@ class AbstractCaster:
     def cast(self, val: str) -> typing.Union[typing.Any, typing.NoReturn]:
         """Try to cast or return val"""
         raise NotImplementedError()
+
+
+class NothingCaster(AbstractCaster):
+    """Caster who does nothing"""
+
+    def cast(self, val: str) -> str:
+        return val
+
+
+DEFAULT_CASTER = NothingCaster()
 
 
 class ConstantCaster(AbstractCaster, typing.Generic[VT]):
@@ -29,23 +38,22 @@ class ConstantCaster(AbstractCaster, typing.Generic[VT]):
 
 class BoolCaster(ConstantCaster):
     ABLE_TO_CAST = {
-        'true': True,
+        'TRUE': True,
         '1': True,
-        'yes': True,
-        'ok': True,
-        'on': True,
-        'false': False,
+        'YES': True,
+        'OK': True,
+        'ON': True,
+        'FALSE': False,
         '0': False,
-        'no': False,
-        'off': False,
+        'NO': False,
+        'OFF': False,
     }
 
 
 class IntCaster(AbstractCaster):
     def cast(self, val: str) -> typing.Union[int, typing.NoReturn]:
         try:
-            as_int = int(val)
-            return as_int
+            return int(val)
         except ValueError:
             raise ImpossibleToCastError(val, self)
 
@@ -54,33 +62,21 @@ class FloatCaster(AbstractCaster):
     def cast(self, val: str) -> typing.Union[float, typing.NoReturn]:
         val = val.replace(',', '.')
         try:
-            as_float = float(val)
-            return as_float
+            return float(val)
         except ValueError:
             raise ImpossibleToCastError(val, self)
 
 
 class ListCaster(AbstractCaster):
-    def __init__(self, separator: str = ','):
+    def __init__(self, separator: str = ',', item_caster: AbstractCaster = DEFAULT_CASTER):
         self.separator = separator
+        self.item_caster = item_caster
 
-    def cast(self, val: str) -> typing.List[typing.Any]:
+    def cast(self, val: str) -> list:
         if val.endswith(self.separator):
             val = val[0: len(val) - len(self.separator)]
-        return val.split(self.separator)
 
-
-class LoggingLogLevelCaster(ConstantCaster):
-    ABLE_TO_CAST = {
-        'CRITICAL': logging.CRITICAL,
-        'FATAL': logging.FATAL,
-        'ERROR': logging.ERROR,
-        'WARN': logging.WARN,
-        'WARNING': logging.WARNING,
-        'INFO': logging.INFO,
-        'DEBUG': logging.DEBUG,
-        'NOTSET': logging.NOTSET,
-    }
+        return list(map(self.item_caster.cast, val.split(self.separator)))
 
 
 class LoguruLogLevelCaster(ConstantCaster):
@@ -88,21 +84,11 @@ class LoguruLogLevelCaster(ConstantCaster):
     ABLE_TO_CAST = {level.lower(): level for level in levels}
 
 
-class NothingCaster(AbstractCaster):
-    """Caster who does nothing"""
-
-    def cast(self, val: str) -> str:
-        return val
-
-
-DEFAULT_CASTER = NothingCaster()
-
 __all__ = (
     'BoolCaster',
     'IntCaster',
     'FloatCaster',
     'ListCaster',
-    'LoggingLogLevelCaster',
     'LoguruLogLevelCaster',
     'AbstractCaster',
     'ConstantCaster',
